@@ -1,0 +1,49 @@
+name: fork-check-fleet
+on:
+  push:
+    branches: [ci/fleet-tests]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      FILES: >-
+        x-pack/platform/plugins/shared/fleet/server/services/epm/packages/install_state_machine/steps/step_save_system_object.test.ts
+        x-pack/platform/plugins/shared/fleet/server/services/epm/packages/update_custom_integration.test.ts
+        x-pack/platform/plugins/shared/fleet/server/services/fleet_server_host.test.ts
+      CHANGED: >-
+        x-pack/platform/plugins/shared/fleet/server/services/epm/packages/install_state_machine/steps/step_save_system_object.test.ts
+        x-pack/platform/plugins/shared/fleet/server/services/epm/packages/install_state_machine/steps/step_save_system_object.ts
+        x-pack/platform/plugins/shared/fleet/server/services/epm/packages/update_custom_integration.test.ts
+        x-pack/platform/plugins/shared/fleet/server/services/epm/packages/update_custom_integration.ts
+        x-pack/platform/plugins/shared/fleet/server/services/epm/packages/utils.ts
+        x-pack/platform/plugins/shared/fleet/server/services/fleet_server_host.test.ts
+        x-pack/platform/plugins/shared/fleet/server/services/fleet_server_host.ts
+    steps:
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Bootstrap
+        run: |
+          npm i -g yarn
+          yarn kbn bootstrap --no-validate
+      - name: Jest
+        run: set -o pipefail; node scripts/jest $FILES 2>&1 | tee jest.log
+      - name: ESLint
+        if: always()
+        run: set -o pipefail; node scripts/eslint $CHANGED 2>&1 | tee eslint.log
+      - name: Type check (fleet)
+        if: always()
+        continue-on-error: true
+        run: set -o pipefail; NODE_OPTIONS=--max-old-space-size=12000 node scripts/type_check --project x-pack/platform/plugins/shared/fleet/tsconfig.json 2>&1 | tail -60 | tee tsc.log
+      - name: Summary
+        if: always()
+        run: |
+          grep -E "Tests:|Test Suites:|✓|✕|●" jest.log | tail -60 || true
+          tail -20 eslint.log || true
+          tail -20 tsc.log || true
