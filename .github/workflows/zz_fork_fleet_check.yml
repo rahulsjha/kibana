@@ -5,7 +5,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 150
     env:
       FILES: >-
         x-pack/platform/plugins/shared/fleet/server/services/epm/packages/install_state_machine/steps/step_save_system_object.test.ts
@@ -30,8 +30,9 @@ jobs:
           node-version-file: .nvmrc
       - name: Bootstrap
         run: |
-          npm i -g yarn
-          yarn kbn bootstrap --no-validate
+          corepack enable
+          pnpm --version
+          pnpm kbn bootstrap
       - name: Jest
         run: set -o pipefail; node scripts/jest $FILES 2>&1 | tee jest.log
       - name: ESLint
@@ -40,10 +41,10 @@ jobs:
       - name: Type check (fleet)
         if: always()
         continue-on-error: true
-        run: set -o pipefail; NODE_OPTIONS=--max-old-space-size=12000 node scripts/type_check --project x-pack/platform/plugins/shared/fleet/tsconfig.json 2>&1 | tail -60 | tee tsc.log
+        run: set -o pipefail; NODE_OPTIONS=--max-old-space-size=12000 node scripts/type_check --project x-pack/platform/plugins/shared/fleet/tsconfig.json 2>&1 | tail -80 | tee tsc.log
       - name: Summary
         if: always()
         run: |
-          grep -E "Tests:|Test Suites:|✓|✕|●" jest.log | tail -60 || true
-          tail -20 eslint.log || true
-          tail -20 tsc.log || true
+          grep -E "Tests:|Test Suites:|✓|✕|●" jest.log | tail -80 || true
+          tail -30 eslint.log || true
+          tail -30 tsc.log || true
