@@ -1093,6 +1093,50 @@ describe('getFleetServerHostsForAgentPolicy', () => {
     );
   });
 
+  it('resolves the default host again when it was deleted after it was looked up', async () => {
+    const soClient = getMockedSoClient({ findHosts: true });
+    soClient.find
+      .mockResolvedValueOnce({
+        saved_objects: [{ id: 'test123', attributes: { host_urls: [], is_default: true } }],
+      } as any)
+      .mockResolvedValueOnce({
+        saved_objects: [{ id: 'new-default', attributes: { host_urls: [], is_default: true } }],
+      } as any);
+    const esoClient = getMockedEncryptedSoClient();
+    esoClient.getDecryptedAsInternalUser
+      .mockRejectedValueOnce(
+        SavedObjectsErrorHelpers.createGenericNotFoundError(
+          FLEET_SERVER_HOST_SAVED_OBJECT_TYPE,
+          'test123'
+        )
+      )
+      .mockResolvedValueOnce({ ...decryptedDefaultHost, id: 'new-default' } as any);
+
+    const host = await getFleetServerHostsForAgentPolicy(soClient, {});
+
+    expect(esoClient.getDecryptedAsInternalUser).toHaveBeenLastCalledWith(
+      FLEET_SERVER_HOST_SAVED_OBJECT_TYPE,
+      'new-default'
+    );
+    expect(host).toEqual(expect.objectContaining({ id: 'new-default' }));
+    expect(mockedLogger.warn).not.toHaveBeenCalled();
+  });
+
+  it('throws, rather than using the deleted host, when there is no other default host', async () => {
+    const soClient = getMockedSoClient({ findHosts: true });
+    const esoClient = getMockedEncryptedSoClient();
+    esoClient.getDecryptedAsInternalUser.mockRejectedValueOnce(
+      SavedObjectsErrorHelpers.createGenericNotFoundError(
+        FLEET_SERVER_HOST_SAVED_OBJECT_TYPE,
+        'test123'
+      )
+    );
+
+    await expect(getFleetServerHostsForAgentPolicy(soClient, {})).rejects.toThrow(
+      'Default Fleet Server host is not setup'
+    );
+  });
+
   it('throws when there is no default host and the policy has none', async () => {
     const soClient = getMockedSoClient();
     getMockedEncryptedSoClient();

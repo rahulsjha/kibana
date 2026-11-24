@@ -599,6 +599,14 @@ export async function getFleetServerHostsForAgentPolicy(
   try {
     return await fleetServerHostService.get(defaultFleetServerHost.id);
   } catch (error) {
+    if (SavedObjectsErrorHelpers.isNotFoundError(error)) {
+      // The host was deleted after it was looked up, so resolve the default host again.
+      const currentDefault = await fleetServerHostService.getDefaultFleetServerHost();
+      if (!currentDefault || currentDefault.id === defaultFleetServerHost.id) {
+        throw new FleetServerHostNotFoundError('Default Fleet Server host is not setup');
+      }
+      return fleetServerHostService.get(currentDefault.id);
+    }
     // Its URLs and proxy were read, so keep the host rather than losing it over its SSL settings.
     appContextService
       .getLogger()
