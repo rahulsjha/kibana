@@ -12,8 +12,15 @@ jobs:
         x-pack/platform/plugins/shared/fleet/server/services/epm/packages/update_custom_integration.test.ts
         x-pack/platform/plugins/shared/fleet/server/services/fleet_server_host.test.ts
         x-pack/platform/plugins/shared/fleet/server/services/epm/packages/utils.test.ts
+        x-pack/platform/plugins/shared/fleet/server/services/agent_policies/full_agent_policy.test.ts
+        x-pack/platform/plugins/shared/fleet/server/routes/agent_policy/handlers.test.ts
       CHANGED: >-
         x-pack/platform/plugins/shared/fleet/server/services/epm/packages/utils.test.ts
+        x-pack/platform/plugins/shared/fleet/server/services/agent_policies/full_agent_policy.test.ts
+        x-pack/platform/plugins/shared/fleet/server/services/agent_policies/full_agent_policy.ts
+        x-pack/platform/plugins/shared/fleet/server/routes/agent_policy/handlers.test.ts
+        x-pack/platform/plugins/shared/fleet/server/routes/agent_policy/handlers.ts
+        x-pack/platform/plugins/shared/fleet/server/services/agent_policy.ts
         x-pack/platform/plugins/shared/fleet/server/services/epm/packages/install_state_machine/steps/step_save_system_object.test.ts
         x-pack/platform/plugins/shared/fleet/server/services/epm/packages/install_state_machine/steps/step_save_system_object.ts
         x-pack/platform/plugins/shared/fleet/server/services/epm/packages/update_custom_integration.test.ts
