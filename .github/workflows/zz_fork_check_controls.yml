@@ -1,0 +1,31 @@
+name: fork-check-controls
+on:
+  push:
+    branches: [ci/controls-abort]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      DIR: src/platform/plugins/shared/controls/public/controls/data_controls/options_list_control
+    steps:
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Bootstrap
+        run: |
+          corepack enable
+          pnpm kbn bootstrap
+      - name: Jest
+        run: set -o pipefail; node scripts/jest $DIR/fetch_and_validate.test.ts $DIR/get_options_list_control_factory.test.tsx 2>&1 | tee jest.log
+      - name: ESLint
+        if: always()
+        run: node scripts/eslint $DIR/fetch_and_validate.tsx $DIR/fetch_and_validate.test.ts
+      - name: Summary
+        if: always()
+        run: grep -E "Tests:|Test Suites:|✓|✕|●" jest.log | tail -60 || true
