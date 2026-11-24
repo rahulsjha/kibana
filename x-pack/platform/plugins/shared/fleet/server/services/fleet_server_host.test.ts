@@ -1122,6 +1122,34 @@ describe('getFleetServerHostsForAgentPolicy', () => {
     expect(mockedLogger.warn).not.toHaveBeenCalled();
   });
 
+  it('keeps the new default host, without its ssl settings, when they cannot be decrypted', async () => {
+    const soClient = getMockedSoClient({ findHosts: true });
+    soClient.find
+      .mockResolvedValueOnce({
+        saved_objects: [{ id: 'test123', attributes: { host_urls: [], is_default: true } }],
+      } as any)
+      .mockResolvedValueOnce({
+        saved_objects: [{ id: 'new-default', attributes: { host_urls: [], is_default: true } }],
+      } as any);
+    const esoClient = getMockedEncryptedSoClient();
+    esoClient.getDecryptedAsInternalUser
+      .mockRejectedValueOnce(
+        SavedObjectsErrorHelpers.createGenericNotFoundError(
+          FLEET_SERVER_HOST_SAVED_OBJECT_TYPE,
+          'test123'
+        )
+      )
+      .mockRejectedValueOnce(new Error('Unable to decrypt'));
+
+    const host = await getFleetServerHostsForAgentPolicy(soClient, {});
+
+    expect(host).toEqual(expect.objectContaining({ id: 'new-default', is_default: true }));
+    expect(host.ssl).toBeUndefined();
+    expect(mockedLogger.warn).toHaveBeenCalledWith(
+      'Could not read the SSL settings of the default Fleet Server host [new-default], so it is used without them: Unable to decrypt'
+    );
+  });
+
   it('throws, rather than using the deleted host, when there is no other default host', async () => {
     const soClient = getMockedSoClient({ findHosts: true });
     const esoClient = getMockedEncryptedSoClient();
