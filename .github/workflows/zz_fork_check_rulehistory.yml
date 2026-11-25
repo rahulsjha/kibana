@@ -1,0 +1,40 @@
+name: fork-check-rulehistory
+on:
+  push:
+    branches: [ci/rule-history-after-import]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      DIR: x-pack/solutions/security/plugins/security_solution/public/detection_engine/rule_management_ui/components/rule_import_modal
+    steps:
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 3
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Bootstrap
+        run: |
+          corepack enable
+          pnpm kbn bootstrap
+      - name: Jest with the fix
+        run: set -o pipefail; node scripts/jest $DIR/rule_import_modal.test.tsx 2>&1 | tee jest.log
+      - name: ESLint
+        if: always()
+        run: node scripts/eslint $DIR/rule_import_modal.tsx $DIR/rule_import_modal.test.tsx
+      - name: Jest without the fix (must fail)
+        if: always()
+        run: |
+          git checkout HEAD~2 -- $DIR/rule_import_modal.tsx
+          if node scripts/jest $DIR/rule_import_modal.test.tsx > unfixed.log 2>&1; then
+            echo "UNEXPECTED: the test passes without the fix"; exit 1
+          fi
+          grep -E "✕|Tests:" unfixed.log | head -10
+          echo "The test fails without the fix, as expected."
+      - name: Summary
+        if: always()
+        run: grep -E "Tests:|Test Suites:|✓|✕" jest.log | tail -40 || true
